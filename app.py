@@ -16,7 +16,6 @@ if "horas_devidas" not in st.session_state:
         "Melissa": 0,
         "Ana": 0,
         "Leandro": 0
-        "meusovo" : 0
     }
 
 dias_semana = {
