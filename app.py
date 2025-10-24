@@ -51,24 +51,6 @@ def salvar_dados():
         json.dump(usuarios, f, indent=4)
 
 # ===== Funções =====
-def adicionar_horas(nome):
-    st.subheader(f"➕ Adicionar horas - {nome}")
-    senha = st.text_input("Senha:", type="password", key=f"add_{nome}")
-    if senha == usuarios[nome]["senha"]:
-        dia = st.date_input("Escolha o dia da falta", key=f"data_add_{nome}")
-        dia_str = dia.strftime("%d/%m/%Y")
-        if st.button("Confirmar adição", key=f"btn_add_{nome}"):
-            if dia_str not in usuarios[nome]["faltas"]:
-                valor = 5 if dia.weekday() < 5 else 4
-                usuarios[nome]["horas"].append(valor)
-                usuarios[nome]["faltas"].append(dia_str)
-                salvar_dados()
-                st.success(f"{valor} horas adicionadas em {dia_str}")
-            else:
-                st.warning("Essa data já foi registrada.")
-    elif senha:
-        st.error("Senha incorreta!")
-
 def remover_horas_admin():
     st.subheader("➖ Remover horas")
     senha = st.text_input("Senha mestra:", type="password", key="senha_rem_admin")
@@ -112,7 +94,7 @@ def ver_horas():
         nomes.append(nome)
         horas_totais.append(total)
 
-    # Mostrar gráfico interativo com Plotly
+    # ===== Gráfico Interativo (barras mais finas) =====
     fig = px.bar(
         x=nomes,
         y=horas_totais,
@@ -122,16 +104,23 @@ def ver_horas():
         title="Horas Totais Devidas por Usuário",
         labels={"x": "Usuário", "y": "Total de Horas"},
     )
-    fig.update_traces(textposition="outside")
+
+    fig.update_traces(
+        textposition="outside",
+        width=0.3  # 🔹 Barras mais finas
+    )
+
     fig.update_layout(
         xaxis_tickangle=-30,
         template="plotly_dark",
         height=500,
         title_font_size=22,
+        showlegend=False,
     )
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # Lista detalhada
+    # ===== Lista detalhada =====
     st.markdown("---")
     for nome, dados in usuarios.items():
         with st.expander(f"👤 {nome} — {sum(dados['horas'])} horas"):
@@ -147,7 +136,7 @@ def admin_panel():
     if senha == senha_mestra:
         opcao = st.selectbox(
             "Selecione a operação:",
-            ["➕ Adicionar horas", "➖ Remover horas", "👤 Adicionar usuário", "🗑️ Remover usuário", "🔑 Alterar senha"],
+            ["➕ Adicionar horas", "➖ Remover horas", "👤 Adicionar usuário", "🗑️ Remover usuário"],
         )
 
         if opcao == "➕ Adicionar horas":
@@ -184,14 +173,6 @@ def admin_panel():
                 usuarios.pop(nome_remover)
                 salvar_dados()
                 st.success(f"Usuário {nome_remover} removido!")
-
-        elif opcao == "🔑 Alterar senha":
-            nome_alt = st.selectbox("Escolha o usuário para alterar senha:", list(usuarios.keys()))
-            nova_senha = st.text_input("Nova senha")
-            if st.button("Alterar"):
-                usuarios[nome_alt]["senha"] = nova_senha
-                salvar_dados()
-                st.success(f"Senha de {nome_alt} alterada!")
 
     elif senha:
         st.error("Senha mestra incorreta!")
