@@ -1,8 +1,8 @@
 import streamlit as st
-from datetime import datetime
 import json
 import os
-import matplotlib.pyplot as plt
+import plotly.express as px
+from datetime import datetime
 
 st.set_page_config(page_title="Controle de Horas", layout="wide")
 
@@ -18,16 +18,16 @@ if os.path.exists(ARQUIVO_DADOS):
         usuarios = json.load(f)
 else:
     usuarios = {
-        "Lucas Uva": {"horas": [], "faltas": []},
-        "Luis": {"horas": [], "faltas": []},
-        "Matheus": {"horas": [], "faltas": []},
-        "Raphaela": {"horas": [], "faltas": []},
-        "Ralf": {"horas": [], "faltas": []},
-        "Julia": {"horas": [], "faltas": []},
-        "Withyna": {"horas": [], "faltas": []},
-        "Melissa": {"horas": [], "faltas": []},
-        "Ana": {"horas": [], "faltas": []},
-        "Leandro": {"horas": [], "faltas": []},
+        "Lucas Uva": {"senha": "lu123", "horas": [], "faltas": []},
+        "Luis": {"senha": "lu1", "horas": [], "faltas": []},
+        "Matheus": {"senha": "ma123", "horas": [], "faltas": []},
+        "Raphaela": {"senha": "ra123", "horas": [], "faltas": []},
+        "Ralf": {"senha": "ra1", "horas": [], "faltas": []},
+        "Julia": {"senha": "ju1", "horas": [], "faltas": []},
+        "Withyna": {"senha": "wi1", "horas": [], "faltas": []},
+        "Melissa": {"senha": "me1", "horas": [], "faltas": []},
+        "Ana": {"senha": "an1", "horas": [], "faltas": []},
+        "Leandro": {"senha": "le1", "horas": [], "faltas": []},
     }
 
 # Função para salvar JSON
@@ -36,117 +36,130 @@ def salvar_dados():
         json.dump(usuarios, f, indent=4)
 
 # ===== Funções =====
-def adicionar_horas(nome):
-    dia = st.date_input("Escolha o dia da falta", key=f"data_add_{nome}")
-    dia_str = dia.strftime("%d/%m/%Y")
-    horas_adicionar = st.number_input(
-        "Quantidade de horas a adicionar:",
-        min_value=0,
-        step=1,
-        format="%d",
-        key=f"horas_add_{nome}"
-    )
-    if st.button("✅ Confirmar adição", key=f"btn_add_{nome}"):
-        if horas_adicionar > 0:
-            usuarios[nome]["horas"].append(horas_adicionar)
-            usuarios[nome]["faltas"].append(dia_str)
-            salvar_dados()
-            st.success(f"{horas_adicionar} horas adicionadas para {nome} no dia {dia_str}")
-        else:
-            st.warning("Digite uma quantidade válida de horas.")
-
-def remover_horas(nome):
-    if usuarios[nome]["horas"]:
-        total_horas = sum(usuarios[nome]["horas"])
-        qtd = st.number_input(
-            f"Quantas horas deseja remover? (Total: {total_horas})",
-            min_value=1,
-            max_value=total_horas,
-            step=1,
-            format="%d",
-            key=f"qtd_rem_{nome}"
-        )
-        if st.button(f"🗑 Remover horas de {nome}", key=f"btn_rem_{nome}"):
-            restante = qtd
-            while restante > 0 and usuarios[nome]["horas"]:
-                if usuarios[nome]["horas"][-1] <= restante:
-                    restante -= usuarios[nome]["horas"][-1]
-                    usuarios[nome]["horas"].pop()
-                    usuarios[nome]["faltas"].pop()
-                else:
-                    usuarios[nome]["horas"][-1] -= restante
-                    restante = 0
-            salvar_dados()
-            st.success(f"{qtd} horas removidas de {nome}")
-    else:
-        st.warning(f"{nome} não possui horas a remover.")
-
 def ver_horas():
-    st.subheader("📊 Horas devidas")
+    st.subheader("📊 Horas devidas por usuário")
+    dados_grafico = {nome: sum(info["horas"]) for nome, info in usuarios.items()}
 
-    # Mostrar gráfico
-    nomes = list(usuarios.keys())
-    totais = [sum(d["horas"]) for d in usuarios.values()]
-
-    if any(totais):  # só mostra se tiver dados
-        fig, ax = plt.subplots(figsize=(8, 5))
-        ax.barh(nomes, totais)
-        ax.set_xlabel("Horas devidas")
-        ax.set_title("Total de horas devidas por pessoa")
-        st.pyplot(fig)
+    if any(dados_grafico.values()):
+        fig = px.bar(
+            x=list(dados_grafico.keys()),
+            y=list(dados_grafico.values()),
+            text=list(dados_grafico.values()),
+            color=list(dados_grafico.values()),
+            color_continuous_scale="bluered",
+            title="Horas Devidas (Interativo)",
+        )
+        fig.update_traces(textposition="outside")
+        fig.update_layout(
+            xaxis_title="Usuário",
+            yaxis_title="Horas",
+            plot_bgcolor="#f8f9fa",
+            paper_bgcolor="#f8f9fa",
+            font=dict(size=14),
+        )
+        st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Ainda não há horas registradas.")
+        st.info("Nenhum usuário possui horas registradas.")
 
-    # Mostrar lista detalhada
+    # Exibir detalhes individuais
+    st.markdown("### 🗓 Detalhes por pessoa")
     for nome, dados in usuarios.items():
-        with st.expander(f"{nome} - {sum(dados['horas'])} horas"):
+        total = sum(dados["horas"])
+        with st.expander(f"{nome} - **{total} horas**"):
             if dados["faltas"]:
                 for dia, h in zip(dados["faltas"], dados["horas"]):
-                    st.write(f"{dia}: {int(h)} horas")
+                    st.write(f"📅 {dia} → {h} horas")
             else:
                 st.write("Nenhuma falta registrada.")
 
 def admin_panel():
-    st.subheader("🔒 Painel Admin")
+    st.subheader("🔒 Painel do Administrador")
     senha = st.text_input("Senha mestra:", type="password", key="senha_admin")
     if senha == senha_mestra:
-        op = st.selectbox("Escolha a operação:", ["Adicionar/Remover horas", "Adicionar usuário", "Remover usuário"])
-        
-        if op == "Adicionar/Remover horas":
-            nome = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
-            st.markdown("### ➕ Adicionar horas")
-            adicionar_horas(nome)
-            st.markdown("### ➖ Remover horas")
-            remover_horas(nome)
+        op = st.selectbox(
+            "Escolha uma operação:",
+            ["Adicionar horas", "Remover horas", "Adicionar usuário", "Remover usuário", "Alterar senha"],
+        )
 
+        # ========== Adicionar horas ==========
+        if op == "Adicionar horas":
+            nome = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
+            dia = st.date_input("Escolha o dia da falta", key=f"data_add_{nome}")
+            horas = st.number_input("Quantas horas deseja adicionar?", min_value=1, step=1)
+            if st.button("Adicionar horas"):
+                dia_str = dia.strftime("%d/%m/%Y")
+                if dia_str not in usuarios[nome]["faltas"]:
+                    usuarios[nome]["horas"].append(horas)
+                    usuarios[nome]["faltas"].append(dia_str)
+                    salvar_dados()
+                    st.success(f"{horas} horas adicionadas para {nome} em {dia_str}")
+                else:
+                    st.warning("Essa data já foi registrada.")
+
+        # ========== Remover horas ==========
+        elif op == "Remover horas":
+            nome = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
+            total_horas = sum(usuarios[nome]["horas"])
+            if total_horas > 0:
+                qtd = st.number_input(
+                    "Quantas horas deseja remover?",
+                    min_value=1,
+                    max_value=total_horas,
+                    step=1,
+                    key=f"remover_{nome}",
+                )
+                if st.button("Remover horas"):
+                    horas_restantes = qtd
+                    while horas_restantes > 0 and usuarios[nome]["horas"]:
+                        if usuarios[nome]["horas"][-1] <= horas_restantes:
+                            horas_restantes -= usuarios[nome]["horas"][-1]
+                            usuarios[nome]["horas"].pop()
+                            usuarios[nome]["faltas"].pop()
+                        else:
+                            usuarios[nome]["horas"][-1] -= horas_restantes
+                            horas_restantes = 0
+                    salvar_dados()
+                    st.success(f"{qtd} horas removidas de {nome}")
+            else:
+                st.warning("Esse usuário não possui horas a remover.")
+
+        # ========== Adicionar usuário ==========
         elif op == "Adicionar usuário":
             nome_novo = st.text_input("Nome do novo usuário")
+            senha_inicial = st.text_input("Senha inicial")
             if st.button("Adicionar"):
-                if nome_novo and nome_novo not in usuarios:
-                    usuarios[nome_novo] = {"horas": [], "faltas": []}
+                if nome_novo not in usuarios:
+                    usuarios[nome_novo] = {"senha": senha_inicial, "horas": [], "faltas": []}
                     salvar_dados()
                     st.success(f"Usuário {nome_novo} adicionado!")
                 else:
-                    st.error("Usuário já existe ou nome inválido.")
+                    st.error("Usuário já existe.")
 
+        # ========== Remover usuário ==========
         elif op == "Remover usuário":
-            if usuarios:
-                nome_remover = st.selectbox("Escolha o usuário para remover:", list(usuarios.keys()))
-                if st.button("Remover"):
-                    usuarios.pop(nome_remover)
-                    salvar_dados()
-                    st.success(f"Usuário {nome_remover} removido!")
-            else:
-                st.info("Nenhum usuário para remover.")
+            nome_remover = st.selectbox("Escolha o usuário para remover:", list(usuarios.keys()))
+            if st.button("Remover"):
+                usuarios.pop(nome_remover)
+                salvar_dados()
+                st.success(f"Usuário {nome_remover} removido!")
+
+        # ========== Alterar senha ==========
+        elif op == "Alterar senha":
+            nome_alt = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
+            nova_senha = st.text_input("Nova senha")
+            if st.button("Alterar senha"):
+                usuarios[nome_alt]["senha"] = nova_senha
+                salvar_dados()
+                st.success(f"Senha de {nome_alt} alterada!")
     elif senha:
         st.error("Senha mestra incorreta!")
 
 # ===== Interface Principal =====
 st.title("⏱ Controle de Horas Devidas")
 
-acao = st.radio("Escolha uma ação:", ["Ver horas", "Admin"])
+aba = st.sidebar.radio("Navegação", ["Ver horas", "Admin"])
 
-if acao == "Ver horas":
+if aba == "Ver horas":
     ver_horas()
 else:
     admin_panel()
