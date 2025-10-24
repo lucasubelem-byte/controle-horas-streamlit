@@ -83,6 +83,21 @@ def remover_horas_admin():
     else:
         st.warning("Esse usuário não possui horas a remover.")
 
+def adicionar_horas_admin():
+    st.subheader("➕ Adicionar horas")
+    nome = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
+    dia = st.date_input("Escolha o dia", key=f"add_admin_{nome}")
+    dia_str = dia.strftime("%d/%m/%Y")
+    horas = st.number_input("Quantas horas adicionar?", min_value=1, max_value=12, step=1)
+    if st.button("Adicionar", key=f"btn_add_admin_{nome}"):
+        if dia_str not in usuarios[nome]["faltas"]:
+            usuarios[nome]["horas"].append(int(horas))
+            usuarios[nome]["faltas"].append(dia_str)
+            salvar_dados()
+            st.success(f"{horas} horas adicionadas para {nome} em {dia_str}")
+        else:
+            st.warning("Essa data já foi registrada.")
+
 def cor_por_hora(horas):
     """Define a cor da barra de acordo com o total de horas."""
     if horas <= 5:
@@ -104,7 +119,7 @@ def ver_horas():
         horas_totais.append(total)
         cores.append(cor_por_hora(total))
 
-    # ===== Gráfico interativo =====
+    # ===== Gráfico interativo fixo =====
     fig = go.Figure()
 
     fig.add_trace(go.Bar(
@@ -137,7 +152,10 @@ def ver_horas():
         transition={'duration': 800, 'easing': 'cubic-in-out'}
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={
+        'staticPlot': True,      # deixa o gráfico imutável
+        'displayModeBar': False  # esconde a barra de ferramentas
+    })
 
     # ===== Lista detalhada =====
     st.markdown("---")
@@ -159,22 +177,9 @@ def admin_panel():
         )
 
         if opcao == "➕ Adicionar horas":
-            nome = st.selectbox("Escolha o usuário:", list(usuarios.keys()))
-            dia = st.date_input("Escolha o dia", key=f"add_admin_{nome}")
-            dia_str = dia.strftime("%d/%m/%Y")
-            horas = st.number_input("Quantas horas adicionar?", min_value=1, max_value=12, step=1)
-            if st.button("Adicionar", key=f"btn_add_admin_{nome}"):
-                if dia_str not in usuarios[nome]["faltas"]:
-                    usuarios[nome]["horas"].append(int(horas))
-                    usuarios[nome]["faltas"].append(dia_str)
-                    salvar_dados()
-                    st.success(f"{horas} horas adicionadas para {nome} em {dia_str}")
-                else:
-                    st.warning("Essa data já foi registrada.")
-
+            adicionar_horas_admin()
         elif opcao == "➖ Remover horas":
             remover_horas_admin()
-
         elif opcao == "👤 Adicionar usuário":
             nome_novo = st.text_input("Nome do novo usuário")
             if st.button("Adicionar"):
@@ -184,7 +189,6 @@ def admin_panel():
                     st.success(f"Usuário {nome_novo} adicionado!")
                 else:
                     st.error("Usuário já existe.")
-
         elif opcao == "🗑️ Remover usuário":
             nome_remover = st.selectbox("Escolha o usuário para remover:", list(usuarios.keys()))
             if st.button("Remover"):
